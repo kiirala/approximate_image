@@ -43,7 +43,7 @@ def reshape(width, height):
 def keyPress(asc, xpos, ypos):
     #print "'%s' 0x%2x %3d" % (asc, ord(asc), ord(asc))
     if asc == '\x1b':
-        exit(0)
+        glutLeaveMainLoop()
 
 class triangle:
     def __init__(self):

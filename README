@@ -1,0 +1,14 @@
+Genetic algorithm for approximating bitmap images with bunch of triangles
+=========================================================================
+
+This program takes in a 512x512 bitmap image with RGB colours and tries to 
+create an approximation for it using 50 triangles with different colours and
+opacities.
+
+The method for doing this is a genetic algorithm: the program holds at all
+times a number of triangle approximations for the original image and tries to
+modify and combine those approximations to get better ones. Bad approximations
+get discarded, better ones survive.
+
+At least with the current version, finding any sensible approximation for an
+image will take a long time. Several hours at least, maybe days.
