@@ -50,13 +50,12 @@ class triangle:
         self.v = [random.random() for _ in range(6)]
         self.c = [random.random() for _ in range(4)]
 
-if __name__ == "__main__":
+def init():
+    global resolution
     glutInit([])
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
 
     glutInitWindowSize(resolution[0], resolution[1])
-
-    image = [triangle() for _ in range(50)]
 
     #glutInitWindowPosition(0, 0)
     window = glutCreateWindow("Image viewer")
@@ -71,5 +70,19 @@ if __name__ == "__main__":
         print name,glGetString(name)
 
     reshape(resolution[0], resolution[1])
+
+def drawImage(img):
+    global image, resolution
+    image = img
+    display()
+    glFinish()
+    glPixelStorei(GL_PACK_ALIGNMENT, 1)
+    data = glReadPixelsub(0, 0, resolution[0], resolution[1], GL_RGB)
+    return data
+    
+if __name__ == "__main__":
+    init()
+
+    image = [triangle() for _ in range(50)]
 
     glutMainLoop()
