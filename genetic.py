@@ -22,7 +22,7 @@ class triangle:
 def loadReference(name):
     global reference
     image = Image.open(name)
-    reference = numpy.array(image.getdata())
+    reference = numpy.array(image.getdata(), dtype="int32")
     if reference.shape != (512*512, 3):
         print 'Reference image must be 512 x 512, RGB colours, no alpha channel'
         exit(1)
@@ -34,24 +34,27 @@ def evaluateNext():
         breedImages()
 
     image = imageQueue.pop()
-    result = drawimage.drawImage(image)
+    result = drawimage.drawImage(image).astype('int32')
     result.shape = (512*512, 3)
-    diffimg = numpy.fabs(result - reference)
+    diffimg = numpy.absolute(result - reference)
     difference = numpy.sum(diffimg)
     imageDone.append(image)
     imageDifference.append(difference)
     renderedImage.append(result)
+    if generation > 0 and difference == min(imageDifference):
+        saveBestImages('generation-%08d' % generation, 1)
     imagesDrawn += 1
 
 def initialImages():
     global imageQueue, imageDone, imageDifference, renderedImage
-    global generation, imagesDrawn
-    imageQueue = [[triangle() for _ in range(50)] for _ in range(32)]
+    global generation, imagesDrawn, startrate
+    imageQueue = [[triangle() for _ in range(20)] for _ in range(64)]
     imageDone = []
     imageDifference = []
     renderedImage = []
     generation = 0
     imagesDrawn = 0
+    startrate = 0
 
 def breedImages():
     def mutation(image, chance):
@@ -66,22 +69,24 @@ def breedImages():
     def wiggle(image, rate):
         outimage = []
         for tri in image:
-            if random.random() < rate:
-                tri2 = triangle()
-                tri2.v = [val + random.random() * 0.04 - 0.02 for val in tri.v]
-                tri2.c = [val + random.random() * 0.04 - 0.02 for val in tri.c]
-                outimage.append(tri2)
-            else:
-                outimage.append(tri)
+            outimage.append(tri)
+        pos = random.randint(0, len(outimage) - 1)
+        tri = image[pos]
+        tri2 = triangle()
+        tri2.v = [val + random.normalvariate(0, rate / 10) for val in tri.v]
+        tri2.c = [val + random.normalvariate(0, rate / 10) for val in tri.c]
+        outimage[pos] = tri2
         return outimage
         
     def reorder(image):
-        outimage = []
-        pos = random.randint(1, len(image) - 2)
-        for tri in image[pos:]:
-            outimage.append(tri)
-        for tri in image[:pos]:
-            outimage.append(tri)
+        #outimage = []
+        #pos = random.randint(1, len(image) - 2)
+        #for tri in image[pos:]:
+        #    outimage.append(tri)
+        #for tri in image[:pos]:
+        #    outimage.append(tri)
+        outimage = [tri for tri in image]
+        random.shuffle(outimage)
         return outimage
 
     def recombination(a, b, chance):
@@ -96,17 +101,29 @@ def breedImages():
                 outb.append(trib)
         return (outa, outb)
 
-    global imageQueue, imageDone, imageDifference, renderedImage
-    global generation, imagesDrawn
+    def addTriangle(image):
+        outimage = [tri for tri in image]
+        tri = triangle()
+        outimage.insert(random.randint(0, len(outimage)), tri)
+        return outimage
 
-    rate = min(imageDifference) / (512*512*3*80)
+    def removeTriangle(image):
+        outimage = [tri for tri in image]
+        outimage.pop(random.randint(0, len(outimage) - 1))
+        return outimage
+
+    global imageQueue, imageDone, imageDifference, renderedImage
+    global generation, imagesDrawn, startrate
+
+    if startrate == 0:
+        startrate = min(imageDifference)
+    rate = float(min(imageDifference)) / startrate * 0.9 + 0.05
 
     print 'Generation', generation, 'Images drawn', imagesDrawn, 'best', min(imageDifference), 'rate', rate
     generation += 1
 
-    decade = int(math.pow(10, math.floor(math.log10(generation))))
-    if generation >= 10 and generation % decade == 0:
-        saveBestImages('generation-%08d' % generation, 1)
+    #decade = int(math.pow(10, math.floor(math.log10(generation))))
+    #if generation >= 10 and generation % decade == 0:
 
     for i in range(len(imageDone) - 16):
         pos = imageDifference.index(max(imageDifference))
@@ -114,14 +131,27 @@ def breedImages():
         imageDifference.pop(pos)
         renderedImage.pop(pos)
 
-    for img in imageDone:
-        imageQueue.append(mutation(img, rate))
+    if random.random() < rate:
+        for img in imageDone:
+            imageQueue.append(mutation(img, rate))
 
-    for img in imageDone:
-        imageQueue.append(reorder(img))
+    if random.random() < rate:
+        for img in imageDone:
+            imageQueue.append(reorder(img))
 
-    for img in imageDone:
-        imageQueue.append(wiggle(img, rate))
+    if random.random() > rate:
+        for img in imageDone:
+            imageQueue.append(wiggle(img, rate))
+
+    if random.random() < rate:
+        for img in imageDone:
+            if len(img) < 50:
+                imageQueue.append(addTriangle(img))
+
+    if random.random() < rate:
+        for img in imageDone:
+            if len(img) > 10:
+                imageQueue.append(removeTriangle(img))
 
     for pos in range(len(imageDone) / 2):
         posa = random.randint(0, len(imageDone) - 1)
@@ -145,7 +175,7 @@ def saveBestImages(prefix, count):
         pos = indices[num][1]
         img = renderedImage[pos]
         img.shape = (512, 512, 3)
-        outimg = Image.fromarray(img)
+        outimg = Image.fromarray(img.astype('uint8'))
         outimg.save('%s-%02d.png' % (prefix, num))
 
 if __name__ == '__main__':
