@@ -51,7 +51,32 @@ def initialImages():
     global bestImages, bestDifferences, bestRendered
     global generation, imagesDrawn, startrate
 
-    imageQueue = [[triangle() for _ in range(1)] for _ in range(64)]
+    def gentriangle(pos):
+        global reference
+        x = (pos % 10) / 2
+        y = pos / 10
+        side = pos % 2
+        x1 = x / 5.0
+        x2 = (x + 1) / 5.0
+        y1 = y / 5.0
+        y2 = (y + 1) / 5.0
+        tri = triangle()
+        if side == 0:
+            tri.v = [x1, y1, x2, y1, x1, y2]
+        else:
+            tri.v = [x2, y1, x2, y2, x1, y2]
+        samplex = int(((tri.v[0] + tri.v[2] + tri.v[4]) / 3 + random.normalvariate(0, 1/10.0)) * 512)
+        sampley = int(((tri.v[1] + tri.v[3] + tri.v[5]) / 3 + random.normalvariate(0, 1/10.0)) * 512)
+        samplex = min(511, max(0, samplex))
+        sampley = min(511, max(0, sampley))
+        col = [val / 255.0 for val in reference[sampley * 512 + samplex]] + [1.0]
+        tri.c = col
+        return tri
+
+    imageQueue = ([[triangle() for _ in range(1)] for _ in range(128)] +
+                  [[triangle() for _ in range(2)] for _ in range(128)] +
+                  [[triangle() for _ in range(3)] for _ in range(128)] +
+                  [[triangle() for _ in range(4)] for _ in range(128)])
     imageDone = []
     imageDifference = []
     renderedImage = []
@@ -66,29 +91,41 @@ def initialImages():
 
 def breedImages():
     def mutation(image, chance):
-        outputs = [[tri for tri in image] for _ in range(len(image))]
-        for pos in range(len(image)):
-            outputs[pos][pos] = triangle()
+        positions = range(len(image))
+        while len(positions) > 10:
+            positions.pop(random.randint(0, len(positions) - 1))
+
+        outputs = [[tri for tri in image] for _ in positions]
+        for pos in range(len(positions)):
+            outputs[pos][positions[pos]] = triangle()
         return outputs
 
     def wigglePosition(image, rate):
-        outputs = [[tri for tri in image] for _ in range(len(image))]
-        for pos in range(len(image)):
-            tri = image[pos]
+        positions = range(len(image))
+        while len(positions) > 10:
+            positions.pop(random.randint(0, len(positions) - 1))
+
+        outputs = [[tri for tri in image] for _ in positions]
+        for pos in range(len(positions)):
+            tri = image[positions[pos]]
             tri2 = triangle()
-            tri2.v = [val + random.normalvariate(0, rate / 10) for val in tri.v]
+            tri2.v = [val + random.normalvariate(0, rate / 5) for val in tri.v]
             tri2.c = tri.c
-            outputs[pos][pos] = tri2
+            outputs[pos][positions[pos]] = tri2
         return outputs
         
     def wiggleColour(image, rate):
-        outputs = [[tri for tri in image] for _ in range(len(image))]
-        for pos in range(len(image)):
-            tri = image[pos]
+        positions = range(len(image))
+        while len(positions) > 10:
+            positions.pop(random.randint(0, len(positions) - 1))
+
+        outputs = [[tri for tri in image] for _ in positions]
+        for pos in range(len(positions)):
+            tri = image[positions[pos]]
             tri2 = triangle()
             tri2.v = tri.v
-            tri2.c = [val + random.normalvariate(0, rate / 10) for val in tri.c]
-            outputs[pos][pos] = tri2
+            tri2.c = [val + random.normalvariate(0, rate / 3) for val in tri.c]
+            outputs[pos][positions[pos]] = tri2
         return outputs
         
     def reorder(image):
@@ -115,16 +152,22 @@ def breedImages():
         return (outa, outb)
 
     def addTriangle(image):
-        outputs = [[tri for tri in image] for _ in range(len(image) + 1)]
+        positions = range(len(image) + 1)
+        while len(positions) > 10:
+            positions.pop(random.randint(0, len(positions) - 1))
+        outputs = [[tri for tri in image] for _ in positions]
         tri = triangle()
-        for pos in range(len(image) + 1):
-            outputs[pos].insert(pos, tri)
+        for pos in range(len(positions)):
+            outputs[pos].insert(positions[pos], tri)
         return outputs
 
     def removeTriangle(image):
-        outputs = [[tri for tri in image] for _ in range(len(image))]
-        for pos in range(len(image)):
-            outputs[pos].pop(pos)
+        positions = range(len(image))
+        while len(positions) > 10:
+            positions.pop(random.randint(0, len(positions) - 1))
+        outputs = [[tri for tri in image] for _ in positions]
+        for pos in range(len(positions)):
+            outputs[pos].pop(positions[pos])
         return outputs
 
     global imageQueue, imageDone, imageDifference, renderedImage
@@ -160,7 +203,7 @@ def breedImages():
     #if generation >= 10 and generation % decade == 0:
 
     selectedImages = []
-    tweaked = [val + random.normalvariate(0, min(bestDifferences) / 10) for val in imageDifference]
+    tweaked = [val + random.normalvariate(0, min(bestDifferences) / 20) for val in imageDifference]
     indices = sorted([(val,index) for index,val in enumerate(tweaked)])
     for _,pos in indices[:16]:
         selectedImages.append(imageDone[pos])
@@ -168,27 +211,22 @@ def breedImages():
     imageDone = []
     imageDifference = []
     renderedImage = []
-
-
+    
     for img in selectedImages:
         imageQueue += mutation(img, rate)
-
-    for img in selectedImages:
-        imageQueue.append(reorder(img))
-
-    for img in selectedImages:
-        imageQueue += wigglePosition(img, rate)
-
-    for img in selectedImages:
-        imageQueue += wiggleColour(img, rate)
-
     for img in selectedImages:
         if len(img) < 50:
             imageQueue += addTriangle(img)
-
     for img in selectedImages:
         if len(img) > 2:
             imageQueue += removeTriangle(img)
+
+    for img in selectedImages:
+        imageQueue.append(reorder(img))
+    for img in selectedImages:
+        imageQueue += wigglePosition(img, rate)
+    for img in selectedImages:
+        imageQueue += wiggleColour(img, rate)
 
     for pos in range(len(selectedImages)):
         posa = random.randint(0, len(selectedImages) - 1)
