@@ -77,6 +77,7 @@ def breedImages():
             tri = image[pos]
             tri2 = triangle()
             tri2.v = [val + random.normalvariate(0, rate / 10) for val in tri.v]
+            tri2.c = tri.c
             outputs[pos][pos] = tri2
         return outputs
         
@@ -85,6 +86,7 @@ def breedImages():
         for pos in range(len(image)):
             tri = image[pos]
             tri2 = triangle()
+            tri2.v = tri.v
             tri2.c = [val + random.normalvariate(0, rate / 10) for val in tri.c]
             outputs[pos][pos] = tri2
         return outputs
@@ -113,15 +115,17 @@ def breedImages():
         return (outa, outb)
 
     def addTriangle(image):
-        outimage = [tri for tri in image]
+        outputs = [[tri for tri in image] for _ in range(len(image) + 1)]
         tri = triangle()
-        outimage.insert(random.randint(0, len(outimage)), tri)
-        return outimage
+        for pos in range(len(image) + 1):
+            outputs[pos].insert(pos, tri)
+        return outputs
 
     def removeTriangle(image):
-        outimage = [tri for tri in image]
-        outimage.pop(random.randint(0, len(outimage) - 1))
-        return outimage
+        outputs = [[tri for tri in image] for _ in range(len(image))]
+        for pos in range(len(image)):
+            outputs[pos].pop(pos)
+        return outputs
 
     global imageQueue, imageDone, imageDifference, renderedImage
     global bestImages, bestDifferences, bestRendered
@@ -149,7 +153,7 @@ def breedImages():
         startrate = min(bestDifferences)
     rate = float(min(bestDifferences)) / startrate * 0.9 + 0.05
 
-    print 'Generation %4d, Generation best %8d, Rate %.2f, Images %d' % (generation, min(imageDifference), rate, imagesDrawn)
+    print 'Generation %4d, Best %8d, Rate %.2f, Images %d' % (generation, min(imageDifference), rate, imagesDrawn)
     generation += 1
 
     #decade = int(math.pow(10, math.floor(math.log10(generation))))
@@ -180,13 +184,13 @@ def breedImages():
 
     for img in selectedImages:
         if len(img) < 50:
-            imageQueue.append(addTriangle(img))
+            imageQueue += addTriangle(img)
 
     for img in selectedImages:
         if len(img) > 2:
-            imageQueue.append(removeTriangle(img))
+            imageQueue += removeTriangle(img)
 
-    for pos in range(len(selectedImages) / 2):
+    for pos in range(len(selectedImages)):
         posa = random.randint(0, len(selectedImages) - 1)
         posb = random.randint(0, len(selectedImages) - 2)
         if posb >= posa:
