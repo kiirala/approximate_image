@@ -51,32 +51,20 @@ def initialImages():
     global bestImages, bestDifferences, bestRendered
     global generation, imagesDrawn, startrate
 
-    def gentriangle(pos):
-        global reference
-        x = (pos % 10) / 2
-        y = pos / 10
-        side = pos % 2
-        x1 = x / 5.0
-        x2 = (x + 1) / 5.0
-        y1 = y / 5.0
-        y2 = (y + 1) / 5.0
-        tri = triangle()
-        if side == 0:
-            tri.v = [x1, y1, x2, y1, x1, y2]
-        else:
-            tri.v = [x2, y1, x2, y2, x1, y2]
-        samplex = int(((tri.v[0] + tri.v[2] + tri.v[4]) / 3 + random.normalvariate(0, 1/10.0)) * 512)
-        sampley = int(((tri.v[1] + tri.v[3] + tri.v[5]) / 3 + random.normalvariate(0, 1/10.0)) * 512)
-        samplex = min(511, max(0, samplex))
-        sampley = min(511, max(0, sampley))
-        col = [val / 255.0 for val in reference[sampley * 512 + samplex]] + [1.0]
-        tri.c = col
-        return tri
-
     imageQueue = ([[triangle() for _ in range(1)] for _ in range(128)] +
                   [[triangle() for _ in range(2)] for _ in range(128)] +
                   [[triangle() for _ in range(3)] for _ in range(128)] +
                   [[triangle() for _ in range(4)] for _ in range(128)])
+
+    for img in imageQueue:
+        for tri in img:
+            samplex = int(((tri.v[0] + tri.v[2] + tri.v[4]) / 3) * 512)
+            sampley = int(((tri.v[1] + tri.v[3] + tri.v[5]) / 3) * 512)
+            samplex = min(511, max(0, samplex))
+            sampley = min(511, max(0, sampley))
+            col = [val / 255.0 for val in reference[sampley * 512 + samplex]] + [1.0]
+            tri.c = col
+
     imageDone = []
     imageDifference = []
     renderedImage = []
@@ -203,7 +191,7 @@ def breedImages():
     #if generation >= 10 and generation % decade == 0:
 
     selectedImages = []
-    tweaked = [val + random.normalvariate(0, min(bestDifferences) / 20) for val in imageDifference]
+    tweaked = [val + random.random() * max(0.05, 1.0 - generation / 100.0) * min(bestDifferences) / 10 for val in imageDifference]
     indices = sorted([(val,index) for index,val in enumerate(tweaked)])
     for _,pos in indices[:16]:
         selectedImages.append(imageDone[pos])
